@@ -1,0 +1,389 @@
+// ============================================================
+// HRIS - Prisma Schema
+// Mencakup: Auth/RBAC, Core HR, Attendance, Leave, Payroll,
+// Recruitment, Performance & Training
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ------------------------------------------------------------
+// AUTH & RBAC
+// ------------------------------------------------------------
+
+enum Role {
+  ADMIN // akses penuh ke seluruh sistem
+  HR // mengelola seluruh modul HR
+  MANAGER // mengelola tim di bawahnya
+  EMPLOYEE // akses mandiri (self-service)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  role          Role      @default(EMPLOYEE)
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  employee      Employee?
+
+  @@map("users")
+}
+
+// ------------------------------------------------------------
+// CORE HR
+// ------------------------------------------------------------
+
+model Department {
+  id        String      @id @default(cuid())
+  name      String      @unique
+  createdAt DateTime    @default(now())
+
+  positions Position[]
+  employees Employee[]
+  jobs      JobPosting[]
+
+  @@map("departments")
+}
+
+model Position {
+  id           String     @id @default(cuid())
+  title        String
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+  createdAt    DateTime   @default(now())
+
+  employees    Employee[]
+  jobs         JobPosting[]
+
+  @@unique([title, departmentId])
+  @@map("positions")
+}
+
+enum EmploymentStatus {
+  ACTIVE
+  PROBATION
+  RESIGNED
+  TERMINATED
+  ON_LEAVE
+}
+
+model Employee {
+  id             String           @id @default(cuid())
+  employeeCode   String           @unique
+  userId         String?          @unique
+  user           User?            @relation(fields: [userId], references: [id])
+
+  fullName       String
+  email          String           @unique
+  phone          String?
+  address        String?
+  birthDate      DateTime?
+  hireDate       DateTime         @default(now())
+  status         EmploymentStatus @default(ACTIVE)
+
+  departmentId   String?
+  department     Department?      @relation(fields: [departmentId], references: [id])
+  positionId     String?
+  position       Position?        @relation(fields: [positionId], references: [id])
+
+  managerId      String?
+  manager        Employee?        @relation("EmployeeManager", fields: [managerId], references: [id])
+  directReports  Employee[]       @relation("EmployeeManager")
+
+  baseSalary     Decimal          @default(0) @db.Decimal(14, 2)
+
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  attendances        Attendance[]
+  leaveRequests      LeaveRequest[]
+  leaveBalances      LeaveBalance[]
+  approvedLeaves     LeaveRequest[]        @relation("LeaveApprover")
+  payslips           Payslip[]
+  candidateRef       Candidate?
+  goals              Goal[]
+  reviewsAsEmployee  PerformanceReview[]   @relation("ReviewEmployee")
+  reviewsAsReviewer  PerformanceReview[]   @relation("ReviewReviewer")
+  trainingEnrollments TrainingEnrollment[]
+
+  @@map("employees")
+}
+
+// ------------------------------------------------------------
+// ATTENDANCE & LEAVE
+// ------------------------------------------------------------
+
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  ABSENT
+  HALF_DAY
+}
+
+model Attendance {
+  id         String            @id @default(cuid())
+  employeeId String
+  employee   Employee          @relation(fields: [employeeId], references: [id])
+  date       DateTime          @db.Date
+  clockIn    DateTime?
+  clockOut   DateTime?
+  status     AttendanceStatus  @default(PRESENT)
+  notes      String?
+  createdAt  DateTime          @default(now())
+
+  @@unique([employeeId, date])
+  @@map("attendances")
+}
+
+enum LeaveType {
+  ANNUAL
+  SICK
+  MATERNITY
+  PATERNITY
+  UNPAID
+  OTHER
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model LeaveRequest {
+  id          String      @id @default(cuid())
+  employeeId  String
+  employee    Employee    @relation(fields: [employeeId], references: [id])
+  type        LeaveType
+  startDate   DateTime    @db.Date
+  endDate     DateTime    @db.Date
+  days        Int
+  reason      String?
+  status      LeaveStatus @default(PENDING)
+  approverId  String?
+  approver    Employee?   @relation("LeaveApprover", fields: [approverId], references: [id])
+  decidedAt   DateTime?
+  createdAt   DateTime    @default(now())
+
+  @@map("leave_requests")
+}
+
+model LeaveBalance {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  type       LeaveType
+  year       Int
+  entitled   Int      @default(12)
+  used       Int      @default(0)
+
+  @@unique([employeeId, type, year])
+  @@map("leave_balances")
+}
+
+// ------------------------------------------------------------
+// PAYROLL
+// ------------------------------------------------------------
+
+enum PayrollStatus {
+  DRAFT
+  PROCESSED
+  PAID
+}
+
+model PayrollRun {
+  id        String        @id @default(cuid())
+  period    String        // format "YYYY-MM"
+  status    PayrollStatus @default(DRAFT)
+  runDate   DateTime      @default(now())
+  payslips  Payslip[]
+
+  @@unique([period])
+  @@map("payroll_runs")
+}
+
+model Payslip {
+  id             String      @id @default(cuid())
+  payrollRunId   String
+  payrollRun     PayrollRun  @relation(fields: [payrollRunId], references: [id])
+  employeeId     String
+  employee       Employee    @relation(fields: [employeeId], references: [id])
+
+  baseSalary     Decimal     @db.Decimal(14, 2)
+  allowance      Decimal     @default(0) @db.Decimal(14, 2)
+  overtime       Decimal     @default(0) @db.Decimal(14, 2)
+  bpjsKesehatan  Decimal     @default(0) @db.Decimal(14, 2)
+  bpjsKetenagakerjaan Decimal @default(0) @db.Decimal(14, 2)
+  pph21          Decimal     @default(0) @db.Decimal(14, 2)
+  deductionOther Decimal     @default(0) @db.Decimal(14, 2)
+  grossPay       Decimal     @db.Decimal(14, 2)
+  netPay         Decimal     @db.Decimal(14, 2)
+
+  createdAt      DateTime    @default(now())
+
+  @@unique([payrollRunId, employeeId])
+  @@map("payslips")
+}
+
+// ------------------------------------------------------------
+// RECRUITMENT
+// ------------------------------------------------------------
+
+enum JobStatus {
+  OPEN
+  CLOSED
+  ON_HOLD
+}
+
+model JobPosting {
+  id           String      @id @default(cuid())
+  title        String
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  positionId   String?
+  position     Position?   @relation(fields: [positionId], references: [id])
+  description  String
+  status       JobStatus   @default(OPEN)
+  openings     Int         @default(1)
+  createdAt    DateTime    @default(now())
+
+  candidates   Candidate[]
+
+  @@map("job_postings")
+}
+
+enum CandidateStage {
+  APPLIED
+  SCREENING
+  INTERVIEW
+  OFFER
+  HIRED
+  REJECTED
+}
+
+model Candidate {
+  id           String         @id @default(cuid())
+  jobPostingId String
+  jobPosting   JobPosting     @relation(fields: [jobPostingId], references: [id])
+  fullName     String
+  email        String
+  phone        String?
+  resumeUrl    String?
+  stage        CandidateStage @default(APPLIED)
+  notes        String?
+  createdAt    DateTime       @default(now())
+
+  interviews   Interview[]
+
+  // jika kandidat di-hire, terhubung ke record Employee yang dibuat
+  hiredEmployeeId String?   @unique
+  hiredEmployee   Employee? @relation(fields: [hiredEmployeeId], references: [id])
+
+  @@map("candidates")
+}
+
+model Interview {
+  id          String   @id @default(cuid())
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id])
+  scheduledAt DateTime
+  interviewer String
+  feedback    String?
+  score       Int?
+  createdAt   DateTime @default(now())
+
+  @@map("interviews")
+}
+
+// ------------------------------------------------------------
+// PERFORMANCE & TRAINING
+// ------------------------------------------------------------
+
+enum GoalStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model Goal {
+  id          String     @id @default(cuid())
+  employeeId  String
+  employee    Employee   @relation(fields: [employeeId], references: [id])
+  title       String
+  description String?
+  targetDate  DateTime?
+  progress    Int        @default(0) // 0-100
+  status      GoalStatus @default(NOT_STARTED)
+  createdAt   DateTime   @default(now())
+
+  @@map("goals")
+}
+
+enum ReviewStatus {
+  DRAFT
+  SUBMITTED
+  ACKNOWLEDGED
+}
+
+model PerformanceReview {
+  id           String       @id @default(cuid())
+  employeeId   String
+  employee     Employee     @relation("ReviewEmployee", fields: [employeeId], references: [id])
+  reviewerId   String
+  reviewer     Employee     @relation("ReviewReviewer", fields: [reviewerId], references: [id])
+  period       String       // contoh "2026-Q1"
+  rating       Int?         // 1-5
+  strengths    String?
+  improvements String?
+  status       ReviewStatus @default(DRAFT)
+  createdAt    DateTime     @default(now())
+
+  @@unique([employeeId, period])
+  @@map("performance_reviews")
+}
+
+model TrainingProgram {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  startDate   DateTime
+  endDate     DateTime
+  capacity    Int      @default(20)
+  createdAt   DateTime @default(now())
+
+  enrollments TrainingEnrollment[]
+
+  @@map("training_programs")
+}
+
+enum TrainingStatus {
+  ENROLLED
+  COMPLETED
+  CANCELLED
+}
+
+model TrainingEnrollment {
+  id                String          @id @default(cuid())
+  trainingProgramId String
+  trainingProgram   TrainingProgram @relation(fields: [trainingProgramId], references: [id])
+  employeeId        String
+  employee          Employee        @relation(fields: [employeeId], references: [id])
+  status            TrainingStatus  @default(ENROLLED)
+  score             Int?
+  createdAt         DateTime        @default(now())
+
+  @@unique([trainingProgramId, employeeId])
+  @@map("training_enrollments")
+}
