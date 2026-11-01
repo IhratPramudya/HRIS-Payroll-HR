@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser, requireRole } from "@/lib/rbac";
 import { revalidatePath } from "next/cache";
 
-export async function createTrainingProgram(formData: FormData) {
+export async function createTrainingProgram(formData: FormData): Promise<{ success?: boolean; error?: string }> {
   await requireRole(["ADMIN", "HR"]);
 
   const title = String(formData.get("title") || "").trim();
@@ -31,7 +31,7 @@ export async function createTrainingProgram(formData: FormData) {
   return { success: true };
 }
 
-export async function enrollTraining(trainingProgramId: string) {
+export async function enrollTraining(trainingProgramId: string): Promise<{ success?: boolean; error?: string }> {
   const user = await requireUser();
   if (!user.employeeId) return { error: "Akun ini tidak terhubung ke data karyawan." };
 

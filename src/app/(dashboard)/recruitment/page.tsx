@@ -17,6 +17,11 @@ export default async function RecruitmentPage() {
     prisma.department.findMany({ orderBy: { name: "asc" } }),
   ]);
 
+  async function handleCreateJobPosting(formData: FormData): Promise<void> {
+    "use server";
+    await createJobPosting(formData);
+  }
+
   return (
     <div>
       <PageHeader title="Rekrutmen" description="Kelola lowongan dan pipeline kandidat" />
@@ -50,7 +55,7 @@ export default async function RecruitmentPage() {
 
         <div className="card p-5">
           <h3 className="font-semibold mb-3">Buka Lowongan Baru</h3>
-          <form action={createJobPosting} className="space-y-3">
+          <form action={handleCreateJobPosting} className="space-y-3">
             <input name="title" required className="input" placeholder="Judul posisi" />
             <select name="departmentId" className="input">
               <option value="">- Departemen -</option>

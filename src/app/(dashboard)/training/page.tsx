@@ -49,7 +49,13 @@ export default async function TrainingPage() {
         {isManagerial && (
           <div className="card p-5">
             <h3 className="font-semibold mb-3">Buat Program Pelatihan</h3>
-            <form action={createTrainingProgram} className="space-y-3">
+            <form
+              action={async (formData: FormData) => {
+                "use server";
+                await createTrainingProgram(formData);
+              }}
+              className="space-y-3"
+            >
               <input name="title" required className="input" placeholder="Judul pelatihan" />
               <textarea name="description" rows={2} className="input" placeholder="Deskripsi" />
               <div className="grid grid-cols-2 gap-3">

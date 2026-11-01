@@ -52,7 +52,13 @@ export default async function PerformancePage() {
         {!isManagerial && (
           <div className="card p-5">
             <h3 className="font-semibold mb-3">Tambah Goal Baru</h3>
-            <form action={createGoal} className="space-y-3">
+            <form
+              action={async (formData: FormData) => {
+                "use server";
+                await createGoal(formData);
+              }}
+              className="space-y-3"
+            >
               <input name="title" required className="input" placeholder="Judul goal" />
               <textarea name="description" rows={2} className="input" placeholder="Deskripsi" />
               <input type="date" name="targetDate" className="input" />
@@ -99,7 +105,13 @@ export default async function PerformancePage() {
         {isManagerial && (
           <div className="card p-5">
             <h3 className="font-semibold mb-3">Buat Penilaian Kinerja</h3>
-            <form action={createReview} className="space-y-3">
+            <form
+              action={async (formData: FormData) => {
+                "use server";
+                await createReview(formData);
+              }}
+              className="space-y-3"
+            >
               <select name="employeeId" required className="input">
                 <option value="">- Pilih karyawan -</option>
                 {employees.map((e) => (

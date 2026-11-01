@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser, requireRole } from "@/lib/rbac";
 import { revalidatePath } from "next/cache";
 
-export async function createGoal(formData: FormData) {
+export async function createGoal(formData: FormData): Promise<{ success: true } | { error: string }> {
   const user = await requireUser();
   if (!user.employeeId) return { error: "Akun ini tidak terhubung ke data karyawan." };
 
@@ -27,7 +27,7 @@ export async function createGoal(formData: FormData) {
   return { success: true };
 }
 
-export async function updateGoalProgress(goalId: string, progress: number) {
+export async function updateGoalProgress(goalId: string, progress: number): Promise<void> {
   await requireUser();
   const status = progress >= 100 ? "COMPLETED" : progress > 0 ? "IN_PROGRESS" : "NOT_STARTED";
   await prisma.goal.update({
@@ -37,7 +37,7 @@ export async function updateGoalProgress(goalId: string, progress: number) {
   revalidatePath("/performance");
 }
 
-export async function createReview(formData: FormData) {
+export async function createReview(formData: FormData): Promise<{ success: true }> {
   const user = await requireRole(["ADMIN", "HR", "MANAGER"]);
   if (!user.employeeId) throw new Error("Akun ini tidak terhubung ke data karyawan.");
 

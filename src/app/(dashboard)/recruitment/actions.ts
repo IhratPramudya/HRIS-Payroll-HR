@@ -4,7 +4,9 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/rbac";
 import { revalidatePath } from "next/cache";
 
-export async function createJobPosting(formData: FormData) {
+type ActionResult = { success: true } | { error: string };
+
+export async function createJobPosting(formData: FormData): Promise<ActionResult> {
   await requireRole(["ADMIN", "HR"]);
 
   const title = String(formData.get("title") || "").trim();
@@ -24,7 +26,7 @@ export async function createJobPosting(formData: FormData) {
   return { success: true };
 }
 
-export async function addCandidate(jobPostingId: string, formData: FormData) {
+export async function addCandidate(jobPostingId: string, formData: FormData): Promise<ActionResult> {
   await requireRole(["ADMIN", "HR"]);
 
   const fullName = String(formData.get("fullName") || "").trim();
@@ -43,7 +45,7 @@ export async function addCandidate(jobPostingId: string, formData: FormData) {
   return { success: true };
 }
 
-export async function moveCandidateStage(candidateId: string, stage: string) {
+export async function moveCandidateStage(candidateId: string, stage: string): Promise<ActionResult> {
   await requireRole(["ADMIN", "HR"]);
 
   const candidate = await prisma.candidate.update({
@@ -77,7 +79,7 @@ export async function moveCandidateStage(candidateId: string, stage: string) {
   return { success: true };
 }
 
-export async function scheduleInterview(candidateId: string, formData: FormData) {
+export async function scheduleInterview(candidateId: string, formData: FormData): Promise<ActionResult> {
   await requireRole(["ADMIN", "HR"]);
 
   const scheduledAt = String(formData.get("scheduledAt") || "");
