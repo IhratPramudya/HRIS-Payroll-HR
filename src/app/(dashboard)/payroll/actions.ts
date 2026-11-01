@@ -10,12 +10,13 @@ export async function runPayroll(formData: FormData) {
 
   const period = String(formData.get("period") || "");
   if (!/^\d{4}-\d{2}$/.test(period)) {
-    return { error: "Format periode harus YYYY-MM, contoh 2026-10" };
+    throw new Error(period ? "Format periode tidak valid" : "Periode wajib diisi");
   }
+
 
   const existing = await prisma.payrollRun.findUnique({ where: { period } });
   if (existing) {
-    return { error: `Payroll untuk periode ${period} sudah pernah dijalankan.` };
+    throw new Error(existing.status === "PAID" ? "Periode ini sudah dibayarkan" : "Periode ini sudah diproses");
   }
 
   const employees = await prisma.employee.findMany({ where: { status: "ACTIVE" } });

@@ -12,7 +12,7 @@ export async function createGoal(formData: FormData) {
   const description = String(formData.get("description") || "").trim() || null;
   const targetDate = String(formData.get("targetDate") || "");
 
-  if (!title) return { error: "Judul goal wajib diisi." };
+  if (!title) throw new Error("Judul goal wajib diisi.");
 
   await prisma.goal.create({
     data: {
@@ -39,7 +39,7 @@ export async function updateGoalProgress(goalId: string, progress: number) {
 
 export async function createReview(formData: FormData) {
   const user = await requireRole(["ADMIN", "HR", "MANAGER"]);
-  if (!user.employeeId) return { error: "Akun ini tidak terhubung ke data karyawan." };
+  if (!user.employeeId) throw new Error("Akun ini tidak terhubung ke data karyawan.");
 
   const employeeId = String(formData.get("employeeId") || "");
   const period = String(formData.get("period") || "").trim();
@@ -48,7 +48,7 @@ export async function createReview(formData: FormData) {
   const improvements = String(formData.get("improvements") || "").trim() || null;
 
   if (!employeeId || !period) {
-    return { error: "Karyawan dan periode wajib diisi." };
+    throw new Error("Karyawan dan periode wajib diisi.");
   }
 
   await prisma.performanceReview.upsert({
