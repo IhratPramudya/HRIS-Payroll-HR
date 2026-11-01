@@ -5,7 +5,7 @@ import { requireRole } from "@/lib/rbac";
 import { revalidatePath } from "next/cache";
 import { calculatePayroll } from "@/lib/payroll";
 
-export async function runPayroll(formData: FormData) {
+export async function runPayroll(formData: FormData): Promise<{ success: true }> {
   await requireRole(["ADMIN", "HR"]);
 
   const period = String(formData.get("period") || "");
@@ -48,7 +48,7 @@ export async function runPayroll(formData: FormData) {
   return { success: true };
 }
 
-export async function markPayrollPaid(id: string) {
+export async function markPayrollPaid(id: string): Promise<void> {
   await requireRole(["ADMIN", "HR"]);
   await prisma.payrollRun.update({ where: { id }, data: { status: "PAID" } });
   revalidatePath("/payroll");
