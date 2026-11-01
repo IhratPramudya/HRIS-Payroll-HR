@@ -41,7 +41,7 @@ export default async function JobDetailPage({ params }: { params: { jobId: strin
 
       <div className="card p-5 mb-6">
         <h3 className="font-semibold mb-3">Tambah Kandidat</h3>
-        <form action={addCandidateBound} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+        <form action={async (formData) => { await addCandidateBound(formData); }} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
           <input name="fullName" required className="input" placeholder="Nama lengkap" />
           <input name="email" type="email" required className="input" placeholder="Email" />
           <input name="phone" className="input" placeholder="Telepon (opsional)" />
