@@ -40,7 +40,7 @@ export async function createEmployee(formData: FormData) {
   });
 
   if (!parsed.success) {
-    return { error: parsed.error.errors[0].message };
+     throw new Error(parsed.error.issues[0].message);
   }
 
   const data = parsed.data;
