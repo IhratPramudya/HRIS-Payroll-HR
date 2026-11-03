@@ -63,7 +63,13 @@ export default async function PayrollPage() {
 
         <div className="card p-5">
           <h3 className="font-semibold mb-3">Jalankan Payroll Baru</h3>
-          <form action={runPayroll} className="space-y-3">
+          <form
+            action={async (formData: FormData) => {
+              "use server";
+              await runPayroll(formData);
+            }}
+            className="space-y-3"
+          >
             <div>
               <label className="label">Periode (YYYY-MM)</label>
               <input name="period" required placeholder="2026-10" className="input" />
