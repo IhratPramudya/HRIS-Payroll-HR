@@ -5,18 +5,18 @@ import { requireRole } from "@/lib/rbac";
 import { revalidatePath } from "next/cache";
 import { calculatePayroll } from "@/lib/payroll";
 
-export async function runPayroll(formData: FormData): Promise<{ success: true }> {
+export async function runPayroll(formData: FormData) {
   await requireRole(["ADMIN", "HR"]);
 
   const period = String(formData.get("period") || "");
   if (!/^\d{4}-\d{2}$/.test(period)) {
-    throw new Error(period ? "Format periode tidak valid" : "Periode wajib diisi");
+    return { success: false, error: period ? "Format periode tidak valid" : "Periode wajib diisi" };
   }
 
 
   const existing = await prisma.payrollRun.findUnique({ where: { period } });
   if (existing) {
-    throw new Error(existing.status === "PAID" ? "Periode ini sudah dibayarkan" : "Periode ini sudah diproses");
+    return { success: false, error: existing.status === "PAID" ? "Periode ini sudah dibayarkan" : "Periode ini sudah diproses" };
   }
 
   const employees = await prisma.employee.findMany({ where: { status: "ACTIVE" } });
@@ -48,7 +48,7 @@ export async function runPayroll(formData: FormData): Promise<{ success: true }>
   return { success: true };
 }
 
-export async function markPayrollPaid(id: string): Promise<void> {
+export async function markPayrollPaid(id: string) {
   await requireRole(["ADMIN", "HR"]);
   await prisma.payrollRun.update({ where: { id }, data: { status: "PAID" } });
   revalidatePath("/payroll");
